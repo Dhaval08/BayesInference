@@ -45,13 +45,22 @@ while first != '':                      #traverse till the end of the input file
             bayesNetwork[splitLine[0].strip('\n')]['Children'] = []
 
 
-            condprob = []
+            condprob = {}
             for i in range (0, pow(2, len(parentsLine))):
+
+
 
                 conditionalProbability = f.readline().strip()
 
                 splitCondProb = conditionalProbability.split(' ')
-                condprob.append(splitCondProb)
+
+                prob = splitCondProb[0]
+
+                truthLine = splitCondProb[1:]
+
+                truth = tuple(True if x == '+' else False for x in truthLine)
+
+                condprob[truth] = prob
 
             bayesNetwork[splitLine[0].strip('\n')]['ConditionalProbability'] = condprob
 
@@ -68,3 +77,6 @@ print(bayesNetwork)
 
 
 #---------------------------------------Bayesian Network Created------------------------------------------------
+
+
+
