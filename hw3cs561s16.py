@@ -1,6 +1,7 @@
 # @author Dhaval Shah
 
 import sys
+import copy
 
 
 # topologicalSort will sort the given network in a top down fashion
@@ -24,20 +25,46 @@ def topologicalSort(networkDictionary):
 def selectNodes(sortedVariables, networkDictionary, observedVariables):
 
     x = observedVariables.keys()
-    y = networkDictionary.keys()
-    bnPresence = []
+    newNetwork = []
 
-    for i in range (0, len(x)):
-        bnPresence.append(x[i])
+    bnPresence = [True if a in x else False for a in sortedVariables]
 
 
-    for i in range (0, pow(len(y), 2)):
-        for v in y:
+    for i in range (0, pow(len(sortedVariables), 2)):
+        for v in sortedVariables:
             if v not in bnPresence and any(c in bnPresence for c in networkDictionary[v]['Children']):
-                bnPresence.append(v)
+                index = sortedVariables.index(v)
+                bnPresence[index] = True
 
+    for eachNode in sortedVariables:
+        if bnPresence[sortedVariables.index(eachNode)] == True:
+            newNetwork.append(eachNode)
 
-    return bnPresence
+    #bnPresence.reverse()
+
+    return newNetwork
+
+def calculateProbability(Y, e):
+    return
+
+def enumerateAll(vars, e):
+    if not vars:
+        return 1
+
+    Y = vars[0]
+    if Y in e:
+        returnValue = calculateProbability(Y, e) * enumerateAll(vars[1:], e)
+    else:
+        prob = []
+        e2 = copy.deepcopy(e)
+        for eachValue in [True, False]:
+            e2[Y] = eachValue
+            prob.append(calculateProbability(Y, e2) * enumerateAll(vars[1:], e2))
+
+        returnValue = sum(prob)
+
+    return returnValue
+
 
 
 filename = sys.argv[-1]                 #accepting input file name via the command line
