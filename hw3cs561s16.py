@@ -1,4 +1,44 @@
+# @author Dhaval Shah
+
 import sys
+
+
+# topologicalSort will sort the given network in a top down fashion
+# a node is added to the list only after we have added all its parents
+
+def topologicalSort(networkDictionary):
+    var = networkDictionary.keys()
+    l =[]
+
+    while len(l) < len(var):
+        for v in var:
+            if v not in l and all(x in l for x in networkDictionary[v]['Parents']):
+                   l.append(v)
+    return l
+
+
+
+# selectNodes will only select those nodes that are either present in the query
+# or whose eventual child/children are in the query. Other nodes are not to be considered
+
+def selectNodes(sortedVariables, networkDictionary, observedVariables):
+
+    x = observedVariables.keys()
+    y = networkDictionary.keys()
+    bnPresence = []
+
+    for i in range (0, len(x)):
+        bnPresence.append(x[i])
+
+
+    for i in range (0, pow(len(y), 2)):
+        for v in y:
+            if v not in bnPresence and any(c in bnPresence for c in networkDictionary[v]['Children']):
+                bnPresence.append(v)
+
+
+    return bnPresence
+
 
 filename = sys.argv[-1]                 #accepting input file name via the command line
 f = open(filename)
@@ -79,8 +119,10 @@ while first != '':                      #traverse till the end of the input file
 
 
 print(bayesNetwork)
+sortedVariables = topologicalSort(bayesNetwork)
 
-#---------------------------------------Bayesian Network Created------------------------------------------------
+
+#-------------------------------------------------Bayesian Network Created---------------------------------------------------
 
 
 for i in range (0, len(queryList)):
@@ -133,6 +175,9 @@ for i in range (0, len(queryList)):
 
         print(observedDictionary)
 
+        bn = selectNodes(sortedVariables, bayesNetwork, observedDictionary)     #now create a network of only those nodes that we need to calculate the given query
+
+        print(bn, 'consider these nodes')
 
 
 
