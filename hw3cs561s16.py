@@ -3,7 +3,6 @@
 import sys
 import copy
 
-
 # topologicalSort will sort the given network in a top down fashion
 # a node is added to the list only after we have added all its parents
 
@@ -17,8 +16,6 @@ def topologicalSort(networkDictionary):
                    l.append(v)
     return l
 
-
-
 # selectNodes will only select those nodes that are either present in the query
 # or whose eventual child/children are in the query. Other nodes are not to be considered
 
@@ -29,10 +26,9 @@ def selectNodes(sortedVariables, networkDictionary, observedVariables):
 
     bnPresence = [True if a in x else False for a in sortedVariables]
 
-
     for i in range (0, pow(len(sortedVariables), 2)):
         for v in sortedVariables:
-            if v not in bnPresence and any(c in bnPresence for c in networkDictionary[v]['Children']):
+            if bnPresence[sortedVariables.index(v)]!=True and any(bnPresence[sortedVariables.index(c)]==True for c in networkDictionary[v]['Children']):
                 index = sortedVariables.index(v)
                 bnPresence[index] = True
 
@@ -40,35 +36,59 @@ def selectNodes(sortedVariables, networkDictionary, observedVariables):
         if bnPresence[sortedVariables.index(eachNode)] == True:
             newNetwork.append(eachNode)
 
-    #bnPresence.reverse()
-
     return newNetwork
 
-def calculateProbability(Y, e):
-    return
+def calculateProbability(Y, e, bayesNetwork):
+    if len(bayesNetwork[Y]['Parents']) == 0:
+        if e[Y] == True:
+            prob = float(bayesNetwork[Y]['Probability'])
+            return float(bayesNetwork[Y]['Probability'])
+        else:
+            return 1.0-float(bayesNetwork[Y]['Probability'])
+        # Y has at least 1 parent
+    else:
+        # get the value of parents of Y
+        parents = tuple(e[p] for p in bayesNetwork[Y]['Parents'])
 
-def enumerateAll(vars, e):
+        # query for prob of Y = y
+        if e[Y] == True:
+            return float(bayesNetwork[Y]['ConditionalProbability'][parents])
+        else:
+            return 1.0-float(bayesNetwork[Y]['ConditionalProbability'][parents])
+
+
+
+
+# enumerateAll will calculate probability for each variable in the given evidence 'e'
+
+def enumerateAll(X, vars, e, bayesNetwork):
     if not vars:
-        return 1
+        return 1.0
 
     Y = vars[0]
     if Y in e:
-        returnValue = calculateProbability(Y, e) * enumerateAll(vars[1:], e)
+        if Y == X or X == '':
+            returnValue = calculateProbability(Y, e, bayesNetwork) * enumerateAll(X,vars[1:], e, bayesNetwork)
+        else:
+            returnValue = enumerateAll(X,vars[1:], e, bayesNetwork)
     else:
         prob = []
         e2 = copy.deepcopy(e)
         for eachValue in [True, False]:
             e2[Y] = eachValue
-            prob.append(calculateProbability(Y, e2) * enumerateAll(vars[1:], e2))
+            prob.append(calculateProbability(Y, e2, bayesNetwork) * enumerateAll(X,vars[1:], e2, bayesNetwork))
 
         returnValue = sum(prob)
 
     return returnValue
 
 
+#---------------------------------------accepting and manipulating the input file---------------------------------------------
 
-filename = sys.argv[-1]                 #accepting input file name via the command line
-f = open(filename)
+#filename = sys.argv[-1]
+f = open('sample01.txt')
+
+
 
 #---------------------------------Creating the Bayesian Network from the i/p file as a Dictionary-----------------------------------
 
@@ -97,11 +117,11 @@ while first != '':                      #traverse till the end of the input file
 
             decision = f.readline().strip()
             if decision[0] == 'd':
-                bayesNetwork[next.strip('\n')] = {'Parents': [], 'Probability':decision.strip('\n'), 'ConditionalProb':[], 'Type':'Decision'}
+                bayesNetwork[next.strip('\n')] = {'Parents': [], 'Probability':decision.strip('\n'), 'ConditionalProbability':[], 'Type':'Decision'}
                 bayesNetwork[next.strip('\n')]['Children'] = []
             else:
 
-                bayesNetwork[next.strip('\n')] = {'Parents': [], 'Probability':decision.strip('\n'), 'ConditionalProb':[], 'Type':'Normal'}
+                bayesNetwork[next.strip('\n')] = {'Parents': [], 'Probability':decision.strip('\n'), 'ConditionalProbability':[], 'Type':'Normal'}
                 bayesNetwork[next.strip('\n')]['Children'] = []
 
     else:
@@ -168,6 +188,7 @@ for i in range (0, len(queryList)):
         observedDictionary = {}
         variables = []
         value = []
+        X = ''
 
         if values.count('|')==1:                    #Extract the query variable appearing before the '|'
 
@@ -177,11 +198,11 @@ for i in range (0, len(queryList)):
             variables.append(X)                     #Query variable. eg. P(X|e)
 
             if b.count('+')==1:
-                value.append('True')
+                value.append(True)
             else:
-                value.append('False')
+                value.append(False)
 
-            d = values[values.index('| ')+2:]      #'d' will store the part after the '|'
+            d = values[values.index('| ')+2:]       #'d' will store the part after the '|'
 
 
         else:                                       #If '|' is not present in the given query
@@ -192,9 +213,9 @@ for i in range (0, len(queryList)):
         for i in range(0, len(e)):                  #Check for each variable whose value is already given in the query
                 variables.append((e[i][:e[i].index(' =')]))
                 if e[i].count('+') == 1:
-                    value.append('True')
+                    value.append(True)
                 else:
-                    value.append('False')
+                    value.append(False)
 
 
         for i in range (0, len(variables)):
@@ -206,5 +227,8 @@ for i in range (0, len(queryList)):
 
         print(bn, 'consider these nodes')
 
+        calculatedProbability = enumerateAll(X, bn, observedDictionary, bayesNetwork)
+
+        print('Probability is', calculatedProbability)
 
 
