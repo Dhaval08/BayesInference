@@ -1,5 +1,5 @@
 # @author Dhaval Shah
-
+from decimal import Decimal
 import sys
 import copy
 
@@ -235,9 +235,14 @@ for i in range (0, len(queryList)):
             evidenceBN = selectNodes(sortedVariables, bayesNetwork, evidenceObservedDictionary)
 
             denominator = enumerateAll(X2, evidenceBN, evidenceObservedDictionary, bayesNetwork)
-            print('Probability is', calculatedProbability/denominator)
+
+            finalResult = Decimal(str(calculatedProbability/denominator)).quantize(Decimal('.01'))          #Rounding off to 2 decimal places
+            print('Probability is', finalResult)
+
 
         else:
-            print('Probability is', calculatedProbability)
+            finalResult = Decimal(str(calculatedProbability)).quantize(Decimal('.01'))                      #Rounding off to 2 decimal places
+            print('Probability is', finalResult)
+
 
 
