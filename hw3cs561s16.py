@@ -67,7 +67,7 @@ def enumerateAll(X, vars, e, bayesNetwork):
 
     Y = vars[0]
     if Y in e:
-        if Y == X or X == '':
+        if Y == X or X == '' or len(bayesNetwork[Y]['Parents'])!=0:
             returnValue = calculateProbability(Y, e, bayesNetwork) * enumerateAll(X,vars[1:], e, bayesNetwork)
         else:
             returnValue = enumerateAll(X,vars[1:], e, bayesNetwork)
@@ -86,7 +86,7 @@ def enumerateAll(X, vars, e, bayesNetwork):
 #---------------------------------------accepting and manipulating the input file---------------------------------------------
 
 #filename = sys.argv[-1]
-f = open('sample01.txt')
+f = open('sample04.txt')
 
 
 
@@ -183,14 +183,21 @@ for i in range (0, len(queryList)):
 
         values = splitQuery[1]                      #The part of the query after the opening bracket
 
+        diagnostic = False
         observedVariables = []
         observedValues = []
         observedDictionary = {}
+        diagnosticObservedDictionary = {}
+        diagnosticVariables = []
+        diagnosticValue = []
         variables = []
         value = []
         X = ''
+        flag = False
 
         if values.count('|')==1:                    #Extract the query variable appearing before the '|'
+
+            flag = True
 
             b = values[:values.index('|')]
             X = b[:b.index(' ')]
@@ -204,9 +211,13 @@ for i in range (0, len(queryList)):
 
             d = values[values.index('| ')+2:]       #'d' will store the part after the '|'
 
+            print X
+            print sortedVariables.index(X)
 
         else:                                       #If '|' is not present in the given query
             d = values                              #In this case, 'd' will be the entire query itself
+
+        #print sortedVariables.index(d[0])
 
         e = d.split(', ')
 
@@ -217,6 +228,18 @@ for i in range (0, len(queryList)):
                 else:
                     value.append(False)
 
+        if flag == True:
+            if sortedVariables.index(X)<sortedVariables.index(variables[1]):
+                X2 = ''
+                diagnostic = True
+                print 'Diagnostic'
+                diagnosticVariables = variables[1:]
+                diagnosticValue = value[1:]
+                for i in range (0, len(diagnosticVariables)):
+                    diagnosticObservedDictionary[diagnosticVariables[i]] = diagnosticValue[i]
+                print('diagnostic dicti', diagnosticObservedDictionary)
+                diagnosticBN = selectNodes(sortedVariables, bayesNetwork, diagnosticObservedDictionary)
+                print('diagnostic consider these nodes', diagnosticBN)
 
         for i in range (0, len(variables)):
                 observedDictionary[variables[i]] = value[i]
@@ -229,6 +252,11 @@ for i in range (0, len(queryList)):
 
         calculatedProbability = enumerateAll(X, bn, observedDictionary, bayesNetwork)
 
-        print('Probability is', calculatedProbability)
+        if diagnostic == True:
+            denominator = enumerateAll(X2, diagnosticBN, diagnosticObservedDictionary, bayesNetwork)
+            print(denominator)
+            print('Probability is', calculatedProbability/denominator)
+        else:
+            print('Probability is', calculatedProbability)
 
 
