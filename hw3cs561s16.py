@@ -57,8 +57,6 @@ def calculateProbability(Y, e, bayesNetwork):
             return 1.0-float(bayesNetwork[Y]['ConditionalProbability'][parents])
 
 
-
-
 # enumerateAll will calculate probability for each variable in the given evidence 'e'
 
 def enumerateAll(X, vars, e, bayesNetwork):
@@ -67,10 +65,8 @@ def enumerateAll(X, vars, e, bayesNetwork):
 
     Y = vars[0]
     if Y in e:
-        if Y == X or X == '' or len(bayesNetwork[Y]['Parents'])!=0:
-            returnValue = calculateProbability(Y, e, bayesNetwork) * enumerateAll(X,vars[1:], e, bayesNetwork)
-        else:
-            returnValue = enumerateAll(X,vars[1:], e, bayesNetwork)
+        returnValue = calculateProbability(Y, e, bayesNetwork) * enumerateAll(X,vars[1:], e, bayesNetwork)
+
     else:
         prob = []
         e2 = copy.deepcopy(e)
@@ -82,13 +78,10 @@ def enumerateAll(X, vars, e, bayesNetwork):
 
     return returnValue
 
-
 #---------------------------------------accepting and manipulating the input file---------------------------------------------
 
 #filename = sys.argv[-1]
 f = open('sample04.txt')
-
-
 
 #---------------------------------Creating the Bayesian Network from the i/p file as a Dictionary-----------------------------------
 
@@ -140,8 +133,6 @@ while first != '':                      #traverse till the end of the input file
             condprob = {}
             for i in range (0, pow(2, len(parentsLine))):
 
-
-
                 conditionalProbability = f.readline().strip()
 
                 splitCondProb = conditionalProbability.split(' ')
@@ -164,13 +155,11 @@ while first != '':                      #traverse till the end of the input file
 
     first = f.readline().strip()
 
-
 print(bayesNetwork)
 sortedVariables = topologicalSort(bayesNetwork)
 
 
 #-------------------------------------------------Bayesian Network Created---------------------------------------------------
-
 
 for i in range (0, len(queryList)):
     query = queryList[i]
@@ -183,13 +172,12 @@ for i in range (0, len(queryList)):
 
         values = splitQuery[1]                      #The part of the query after the opening bracket
 
-        diagnostic = False
         observedVariables = []
         observedValues = []
         observedDictionary = {}
-        diagnosticObservedDictionary = {}
-        diagnosticVariables = []
-        diagnosticValue = []
+        evidenceObservedDictionary = {}
+        evidenceVariables = []
+        evidenceValue = []
         variables = []
         value = []
         X = ''
@@ -217,7 +205,6 @@ for i in range (0, len(queryList)):
         else:                                       #If '|' is not present in the given query
             d = values                              #In this case, 'd' will be the entire query itself
 
-        #print sortedVariables.index(d[0])
 
         e = d.split(', ')
 
@@ -228,34 +215,28 @@ for i in range (0, len(queryList)):
                 else:
                     value.append(False)
 
-        if flag == True:
-            if sortedVariables.index(X)<sortedVariables.index(variables[1]):
-                X2 = ''
-                diagnostic = True
-                print 'Diagnostic'
-                diagnosticVariables = variables[1:]
-                diagnosticValue = value[1:]
-                for i in range (0, len(diagnosticVariables)):
-                    diagnosticObservedDictionary[diagnosticVariables[i]] = diagnosticValue[i]
-                print('diagnostic dicti', diagnosticObservedDictionary)
-                diagnosticBN = selectNodes(sortedVariables, bayesNetwork, diagnosticObservedDictionary)
-                print('diagnostic consider these nodes', diagnosticBN)
 
         for i in range (0, len(variables)):
                 observedDictionary[variables[i]] = value[i]
 
-        print(observedDictionary)
-
         bn = selectNodes(sortedVariables, bayesNetwork, observedDictionary)     #now create a network of only those nodes that we need to calculate the given query
-
-        print(bn, 'consider these nodes')
 
         calculatedProbability = enumerateAll(X, bn, observedDictionary, bayesNetwork)
 
-        if diagnostic == True:
-            denominator = enumerateAll(X2, diagnosticBN, diagnosticObservedDictionary, bayesNetwork)
-            print(denominator)
+        # If the query is of the form P(X|e) i.e. flag is true, we have to divide "calculatedProbability" it by P(e).
+        # So now we create all the terms and network needed to calculate just P(e) and then perform the division
+
+        if flag == True:
+            X2 = ''
+            evidenceVariables = variables[1:]
+            evidenceValue = value[1:]
+            for i in range (0, len(evidenceVariables)):
+                evidenceObservedDictionary[evidenceVariables[i]] = evidenceValue[i]
+            evidenceBN = selectNodes(sortedVariables, bayesNetwork, evidenceObservedDictionary)
+
+            denominator = enumerateAll(X2, evidenceBN, evidenceObservedDictionary, bayesNetwork)
             print('Probability is', calculatedProbability/denominator)
+
         else:
             print('Probability is', calculatedProbability)
 
