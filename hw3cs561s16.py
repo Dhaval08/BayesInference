@@ -39,6 +39,10 @@ def selectNodes(sortedVariables, networkDictionary, observedVariables):
     return newNetwork
 
 def calculateProbability(Y, e, bayesNetwork):
+
+    if bayesNetwork[Y]['Type'] == 'Decision':
+        return 1.0
+
     if len(bayesNetwork[Y]['Parents']) == 0:
         if e[Y] == True:
             prob = float(bayesNetwork[Y]['Probability'])
@@ -63,7 +67,11 @@ def enumerateAll(X, vars, e, bayesNetwork):
     if not vars:
         return 1.0
 
+
+
     Y = vars[0]
+
+
     if Y in e:
         returnValue = calculateProbability(Y, e, bayesNetwork) * enumerateAll(X,vars[1:], e, bayesNetwork)
 
@@ -81,7 +89,7 @@ def enumerateAll(X, vars, e, bayesNetwork):
 #---------------------------------------accepting and manipulating the input file---------------------------------------------
 
 #filename = sys.argv[-1]
-f = open('sample04.txt')
+f = open('input.txt')
 
 #---------------------------------Creating the Bayesian Network from the i/p file as a Dictionary-----------------------------------
 
@@ -172,6 +180,8 @@ for i in range (0, len(queryList)):
 
         values = splitQuery[1]                      #The part of the query after the opening bracket
 
+        queryVariables = 0
+        multipleVars = []
         observedVariables = []
         observedValues = []
         observedDictionary = {}
@@ -188,19 +198,34 @@ for i in range (0, len(queryList)):
             flag = True
 
             b = values[:values.index('|')]
-            X = b[:b.index(' ')]
 
-            variables.append(X)                     #Query variable. eg. P(X|e)
+            if b.count(",")!=0:
+                #print b
+                c = b.split(", ")
+                for i in range (0, len(c)):
+                    queryVariables = queryVariables+1
+                    variables.append(c[i][:c[i].index(' ')])
+                    if c[i].count('+')==1:
+                        value.append(True)
+                    else:
+                        value.append((False))
+                print(variables)
+                print(queryVariables)
 
-            if b.count('+')==1:
-                value.append(True)
             else:
-                value.append(False)
+
+                queryVariables = 1
+                X = b[:b.index(' ')]
+
+                variables.append(X)                     #Query variable. eg. P(X|e)
+
+                if b.count('+')==1:
+                    value.append(True)
+                else:
+                    value.append(False)
 
             d = values[values.index('| ')+2:]       #'d' will store the part after the '|'
 
-            print X
-            print sortedVariables.index(X)
 
         else:                                       #If '|' is not present in the given query
             d = values                              #In this case, 'd' will be the entire query itself
@@ -228,8 +253,8 @@ for i in range (0, len(queryList)):
 
         if flag == True:
             X2 = ''
-            evidenceVariables = variables[1:]
-            evidenceValue = value[1:]
+            evidenceVariables = variables[queryVariables:]
+            evidenceValue = value[queryVariables:]
             for i in range (0, len(evidenceVariables)):
                 evidenceObservedDictionary[evidenceVariables[i]] = evidenceValue[i]
             evidenceBN = selectNodes(sortedVariables, bayesNetwork, evidenceObservedDictionary)
@@ -237,12 +262,109 @@ for i in range (0, len(queryList)):
             denominator = enumerateAll(X2, evidenceBN, evidenceObservedDictionary, bayesNetwork)
 
             finalResult = Decimal(str(calculatedProbability/denominator)).quantize(Decimal('.01'))          #Rounding off to 2 decimal places
-            print('Probability is', finalResult)
+            print(finalResult)
 
 
         else:
             finalResult = Decimal(str(calculatedProbability)).quantize(Decimal('.01'))                      #Rounding off to 2 decimal places
-            print('Probability is', finalResult)
+            print(finalResult)
 
 
+    elif query[0] == 'E':
+        splitQuery = query.split('(')
+        function = splitQuery[0]                    #It can be 'P', 'EU' or 'MEU'
+        print(function)
 
+        values = splitQuery[1]                      #The part of the query after the opening bracket
+
+        queryVariables = 0
+        multipleVars = []
+        observedVariables = []
+        observedValues = []
+        observedDictionary = {}
+        evidenceObservedDictionary = {}
+        evidenceVariables = []
+        evidenceValue = []
+        variables = []
+        value = []
+        X = ''
+        flag = False
+
+        variables.append('utility')
+        value.append(True)
+
+        if values.count('|')==1:                    #Extract the query variable appearing before the '|'
+
+            flag = True
+
+            b = values[:values.index('|')]
+
+            if b.count(",")!=0:
+                #print b
+                c = b.split(", ")
+                for i in range (0, len(c)):
+                    queryVariables = queryVariables+1
+                    variables.append(c[i][:c[i].index(' ')])
+                    if c[i].count('+')==1:
+                        value.append(True)
+                    else:
+                        value.append((False))
+                print(variables)
+                print(queryVariables)
+
+            else:
+
+                queryVariables = 1
+                X = b[:b.index(' ')]
+
+                variables.append(X)                     #Query variable. eg. P(X|e)
+
+                if b.count('+')==1:
+                    value.append(True)
+                else:
+                    value.append(False)
+
+            d = values[values.index('| ')+2:]       #'d' will store the part after the '|'
+
+
+        else:                                       #If '|' is not present in the given query
+            d = values                              #In this case, 'd' will be the entire query itself
+
+
+        e = d.split(', ')
+
+        for i in range(0, len(e)):                  #Check for each variable whose value is already given in the query
+                variables.append((e[i][:e[i].index(' =')]))
+                if e[i].count('+') == 1:
+                    value.append(True)
+                else:
+                    value.append(False)
+
+
+        for i in range (0, len(variables)):
+                observedDictionary[variables[i]] = value[i]
+
+        bn = selectNodes(sortedVariables, bayesNetwork, observedDictionary)     #now create a network of only those nodes that we need to calculate the given query
+
+        calculatedProbability = enumerateAll(X, bn, observedDictionary, bayesNetwork)
+
+        # If the query is of the form P(X|e) i.e. flag is true, we have to divide "calculatedProbability" it by P(e).
+        # So now we create all the terms and network needed to calculate just P(e) and then perform the division
+
+        if flag == True:
+            X2 = ''
+            evidenceVariables = variables[queryVariables:]
+            evidenceValue = value[queryVariables:]
+            for i in range (0, len(evidenceVariables)):
+                evidenceObservedDictionary[evidenceVariables[i]] = evidenceValue[i]
+            evidenceBN = selectNodes(sortedVariables, bayesNetwork, evidenceObservedDictionary)
+
+            denominator = enumerateAll(X2, evidenceBN, evidenceObservedDictionary, bayesNetwork)
+
+            finalResult = Decimal(str(calculatedProbability/denominator)).quantize(Decimal('.01'))          #Rounding off to 2 decimal places
+            print(int(round(finalResult)))
+
+
+        else:
+            finalResult = Decimal(str(calculatedProbability)).quantize(Decimal('.01'))                      #Rounding off to 2 decimal places
+            print(int(round(finalResult)))
