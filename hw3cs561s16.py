@@ -2,6 +2,7 @@
 from decimal import Decimal
 import sys
 import copy
+import itertools
 
 # topologicalSort will sort the given network in a top down fashion
 # a node is added to the list only after we have added all its parents
@@ -368,3 +369,144 @@ for i in range (0, len(queryList)):
         else:
             finalResult = Decimal(str(calculatedProbability)).quantize(Decimal('.01'))                      #Rounding off to 2 decimal places
             print(int(round(finalResult)))
+
+    elif query[0] == 'M':
+        splitQuery = query.split('(')
+        function = splitQuery[0]                    #It can be 'P', 'EU' or 'MEU'
+        print(function)
+
+        values = splitQuery[1]                      #The part of the query after the opening bracket
+
+        meuVariables = []
+        queryVariables = 0
+        multipleVars = []
+        observedVariables = []
+        observedValues = []
+        observedDictionary = {}
+        evidenceObservedDictionary = {}
+        evidenceVariables = []
+        evidenceValue = []
+        variables = []
+        value = []
+        X = ''
+        flag = False
+        resultDictionary = {}
+
+
+        variables.append('utility')
+        value.append(True)
+
+        if values.count('|')==1:                    #Extract the query variable appearing before the '|'
+
+            flag = True
+
+            b = values[:values.index('|')]
+
+            if b.count(",")!=0:
+                #print b
+                c = b.split(", ")
+                for i in range (0, len(c)):
+                    if c[i].count('=')!=0:
+                        queryVariables = queryVariables+1
+                        variables.append(c[i][:c[i].index(' ')])
+                        if c[i].count('+')==1:
+                            value.append(True)
+                        else:
+                            value.append((False))
+                    else:
+                        meuVariables.append(c[i][:c[i].index(' ')])
+                #print(variables)
+                #print(queryVariables)
+
+            else:
+
+                queryVariables = 1
+                X = b[:b.index(' ')]
+
+                if b.count('=')!=0:
+
+                    variables.append(X)                     #Query variable. eg. P(X|e)
+
+                    if b.count('+')==1:
+                        value.append(True)
+                    else:
+                        value.append(False)
+                else:
+                    meuVariables.append(X)
+
+            d = values[values.index('| ')+2:]       #'d' will store the part after the '|'
+
+
+        else:                                       #If '|' is not present in the given query
+            d = values                              #In this case, 'd' will be the entire query itself
+
+
+        e = d.split(', ')
+
+        for i in range(0, len(e)):                  #Check for each variable whose value is already given in the query
+                if e[i].count('=')!=0:
+                    variables.append((e[i][:e[i].index(' =')]))
+                    if e[i].count('+') == 1:
+                        value.append(True)
+                    else:
+                        value.append(False)
+                else:
+                    meuVariables.append(e[i].strip(")"))
+
+
+        for i in range (0, len(variables)):
+                observedDictionary[variables[i]] = value[i]
+
+        meuLength = len(meuVariables)
+
+        meuTruth = list(itertools.product([True, False], repeat=meuLength))
+
+        for i in range (0, len(meuTruth)):
+            tempEvidence = copy.deepcopy(observedDictionary)
+            meuValue = ''
+            j = 0
+            for each in meuVariables:
+                tempEvidence[each] = meuTruth[i][j]
+                if meuTruth[i][j] == True:
+                    meuValue = meuValue+'+ '
+                else:
+                    meuValue = meuValue+'- '
+                j = j+1
+
+
+
+            bn = selectNodes(sortedVariables, bayesNetwork, tempEvidence)     #now create a network of only those nodes that we need to calculate the given query
+
+            calculatedProbability = enumerateAll(X, bn, tempEvidence, bayesNetwork)
+
+            # If the query is of the form P(X|e) i.e. flag is true, we have to divide "calculatedProbability" it by P(e).
+            # So now we create all the terms and network needed to calculate just P(e) and then perform the division
+
+
+            #print(meuVariables)
+
+            if flag == True:
+                X2 = ''
+                evidenceVariables = variables[queryVariables:]
+                evidenceValue = value[queryVariables:]
+                for i in range (0, len(evidenceVariables)):
+                    evidenceObservedDictionary[evidenceVariables[i]] = evidenceValue[i]
+                evidenceBN = selectNodes(sortedVariables, bayesNetwork, evidenceObservedDictionary)
+
+                denominator = enumerateAll(X2, evidenceBN, evidenceObservedDictionary, bayesNetwork)
+
+                finalResult = Decimal(str(calculatedProbability/denominator)).quantize(Decimal('.01'))          #Rounding off to 2 decimal places
+                #print(int(round(finalResult)))
+
+
+            else:
+                finalResult = Decimal(str(calculatedProbability)).quantize(Decimal('.01'))                      #Rounding off to 2 decimal places
+                #print(int(round(finalResult)))
+
+            resultDictionary[finalResult] = meuValue
+
+        #print(resultDictionary)
+
+        answer = max(resultDictionary.keys())
+
+        print(resultDictionary[answer]+str(int(round(answer))))
